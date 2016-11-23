@@ -16,7 +16,7 @@ namespace BattleShipClient
 		private readonly IPAddress _ipAddress;
 		private readonly int _port;
 		private readonly Func<ICommander> _commanderFactory;
-		private static readonly List<Command> Servers = new List<Command>();
+		private static readonly List<Command> Processes = new List<Command>();
 		private static readonly List<TcpServer> TcpServers = new List<TcpServer>();
 
 		public GameRunner(IPAddress ipAddress, int port, Func<ICommander> commanderFactory)
@@ -35,45 +35,47 @@ namespace BattleShipClient
 			}
 		}
 
-		public async Task<List<GameResult>> RunWithServerAsync(int trials, int? portOverride = null, bool useTcpServer = false)
+		public async Task<List<GameResult>> RunWithServerAsync(int trials, int? portOverride = null, bool useTclServer = false, bool useTclClient = false)
 		{
 			Console.WriteLine($"Running games with server and client - {trials} total games");
 			List<GameResult> allTrialResults = new List<GameResult>();
 			for (var i = 0; i < trials; i++)
 			{
 				Console.WriteLine($"Running game {i}...");
-				var result = await RunOnceWithServer(portOverride, useTcpServer);
+				var result = await RunOnceWithServer(useTclServer, useTclClient, portOverride);
 				allTrialResults.AddRange(result);
 			}
 			return allTrialResults;
 		}
 
-		public async Task<List<GameResult>> RunWithManyServersAsync(int trials, int servers, bool useTcpServer = false)
+		public async Task<List<GameResult>> RunWithManyServersAsync(int trials, int servers, bool useTclServer, bool useTclClient)
 		{
 			const int portBase = 9900;
 			var runningServers = Enumerable.Range(0, servers)
-				.Select(i => Task.Run(() => this.RunWithServerAsync(trials, portOverride: portBase + i, useTcpServer: useTcpServer)))
+				.Select(i => Task.Run(() => this.RunWithServerAsync(trials, portOverride: portBase + i, useTclServer: useTclServer, useTclClient: useTclClient)))
 				.ToArray();
 			await Task.WhenAll(runningServers);
 			return runningServers.SelectMany(s => s.Result).ToList();
 		}
 
-		private async Task<List<GameResult>> RunOnceWithServer(int? portOverride = null, bool useTcpServer = false)
+		private async Task<List<GameResult>> RunOnceWithServer(bool useTclServer, bool useTclClient, int? portOverride = null)
 		{
-			Command server = null;
+			Command tclServer = null;
+			Command tclClient = null;
 			TcpServer tcpServer = null;
 			try
 			{
-				if (!useTcpServer)
+				if (useTclServer)
 				{
-					var serverArguments = new List<string> { @"C:\dev\BattleShip\bs_server.tcl" };
+					var tclPath = Path.Combine(Directory.GetCurrentDirectory(), "tclkit852.exe");
+					var tclServerPath = Path.Combine(Directory.GetCurrentDirectory(), "bs_server.tcl");
+					var serverArguments = new List<string> { File.Exists(tclServerPath) ? tclServerPath : @"C:\dev\BattleShip\bs_server.tcl" };
 					if (portOverride != null)
 					{
 						serverArguments.Add(portOverride.ToString());
 					}
-					var path = Path.Combine(Directory.GetCurrentDirectory(), "tclkit852.exe");
-					var tclExecutablePath = File.Exists(path) ? path : @"C:\dev\BattleShip\tclkit852.exe";
-					server = Command.Run(tclExecutablePath,
+					var tclExecutablePath = File.Exists(tclPath) ? tclPath : @"C:\dev\BattleShip\tclkit852.exe";
+					tclServer = Command.Run(tclExecutablePath,
 						arguments: serverArguments,
 						options: o => o.StartInfo(i => i.CreateNoWindow = false)
 							.StartInfo(i => i.RedirectStandardError = false)
@@ -82,9 +84,9 @@ namespace BattleShipClient
 							.StartInfo(i => i.UseShellExecute = true)
 					);
 
-					lock (Servers)
+					lock (Processes)
 					{
-						Servers.Add(server);
+						Processes.Add(tclServer);
 					}
 				}
 				else
@@ -101,26 +103,58 @@ namespace BattleShipClient
 				await Task.Delay(100);
 
 				var clientTask1 = this.RunOnlyClientAsync(portOverride);
-				var clientTask2 = this.RunOnlyClientAsync(portOverride, () => new RandomCommander());
+
+				Task<GameResult> clientTask2 = Task.FromResult(new GameResult());
+				
+				if (useTclClient)
+				{
+					var tclPath = Path.Combine(Directory.GetCurrentDirectory(), "tclkit852.exe");
+					var tclClientPath = Path.Combine(Directory.GetCurrentDirectory(), "bs_client.tcl");
+					var serverArguments = new List<string> { File.Exists(tclClientPath) ? tclClientPath : @"C:\dev\BattleShip\bs_client.tcl" };
+					if (portOverride != null)
+					{
+						serverArguments.Add(portOverride.ToString());
+					}
+					var tclExecutablePath = File.Exists(tclPath) ? tclPath : @"C:\dev\BattleShip\tclkit852.exe";
+					tclClient = Command.Run(tclExecutablePath,
+						arguments: serverArguments,
+						options: o => o.StartInfo(i => i.CreateNoWindow = false)
+							.StartInfo(i => i.RedirectStandardError = false)
+							.StartInfo(i => i.RedirectStandardInput = false)
+							.StartInfo(i => i.RedirectStandardOutput = false)
+							.StartInfo(i => i.UseShellExecute = true)
+					);
+
+					lock (Processes)
+					{
+						Processes.Add(tclClient);
+					}
+				}
+				else
+				{
+					clientTask2 = this.RunOnlyClientAsync(portOverride);
+				}
+				
 				await Task.WhenAll(clientTask1, clientTask2);
 
-				server?.Kill();
+				tclClient?.Kill();
 				tcpServer?.Dispose();
-				return new List<GameResult> {clientTask1.Result, clientTask2.Result};
+				return new List<GameResult> {clientTask1.Result, tclClient == null ? clientTask2?.Result : new GameResult {Victory = !clientTask1.Result.Victory} };
 			}
 			finally
 			{
 				// make sure we kill this so we don't need to in task manager (thanks tcl...)
-				server?.Kill();
+				tclServer?.Kill();
+				tclClient?.Kill();
 			}
 		}
 
 		public static void KillServers()
 		{
-			lock (Servers)
+			lock (Processes)
 			{
-				Servers.ForEach(s => s?.Kill());
-				Servers.Clear();
+				Processes.ForEach(s => s?.Kill());
+				Processes.Clear();
 			}
 			lock (TcpServers)
 			{
