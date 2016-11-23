@@ -42,18 +42,23 @@ namespace BattleShipClient
 				.ArgumentWithFlag("n",
 					flag: "n",
 					parser: int.Parse,
-					defaultValue: 5)
+					defaultValue: 2)
 				.ArgumentWithFlag("servers",
 					flag: "servers",
 					parser: int.Parse,
-					defaultValue: 1)
-				.ArgumentWithFlag("tcl",
-					flag: "tcl",
+					defaultValue: 2)
+				.ArgumentWithFlag("tclServer",
+					flag: "tclServer",
+					parser: bool.Parse,
+					defaultValue: true)
+				.ArgumentWithFlag("tclClient",
+					flag: "tclClient",
 					parser: bool.Parse,
 					defaultValue: true)
 				.Build(args);
 
 			Console.WriteLine(arguments.ToConsoleString());
+			Console.WriteLine("Press enter to start! (exit terminal or CRTL+C to terminate)");
 			Console.ReadLine();
 
 			var ipAddress = arguments.GetByName<IPAddress>("ip").Value;
@@ -61,14 +66,15 @@ namespace BattleShipClient
 			var commanderType = arguments.GetByName<CommanderType>("commander").Value;
 			var trials = arguments.GetByName<int>("n").Value;
 			var serverCount = arguments.GetByName<int>("servers").Value;
-			var tcl = arguments.GetByName<bool>("tcl").Value;
+			var tclServer = arguments.GetByName<bool>("tclServer").Value;
+			var tclClient = arguments.GetByName<bool>("tclClient").Value;
 
 			var start = DateTimeOffset.Now;
 
 			// run games
 			using (var runner = new GameRunner(ipAddress, port, CommanderTypeSelector.GetCommanderFactory(commanderType)))
 			{
-				var results = runner.RunWithManyServersAsync(trials: trials, servers: serverCount, useTcpServer: !tcl).Result;
+				var results = runner.RunWithManyServersAsync(trials: trials, servers: serverCount, useTclServer: tclServer, useTclClient: tclClient).Result;
 				PrintResults(results);
 			}
 
@@ -85,9 +91,9 @@ namespace BattleShipClient
 			var player1 = results.Select(((result, i) => new {result, i})).Where(s => s.i % 2 == 0).Select(s => s.result).ToList();
 			Console.ForegroundColor = ConsoleColor.Cyan;
 			Console.WriteLine($"{wins.Count} games complete!");
-			Console.WriteLine($"Shots  - Avg: {wins.Average(w => w.Shots):00} | Min: {wins.Min(w => w.Shots.ToString("00"))} | Max: {wins.Max(w => w.Shots.ToString("00"))}");
-			Console.WriteLine($"Hits   - Avg: {wins.Average(w => w.Hits):00} | Min: {wins.Min(w => w.Hits.ToString("00"))} | Max: {wins.Max(w => w.Hits.ToString("00"))}");
-			Console.WriteLine($"Misses - Avg: {wins.Average(w => w.Misses):00} | Min: {wins.Min(w => w.Misses.ToString("00"))} | Max: {wins.Max(w => w.Misses.ToString("00"))}");
+			Console.WriteLine($"Shots  - Avg: {player1.Average(w => w.Shots):00} | Min: {player1.Min(w => w.Shots.ToString("00"))} | Max: {player1.Max(w => w.Shots.ToString("00"))}");
+			Console.WriteLine($"Hits   - Avg: {player1.Average(w => w.Hits):00} | Min: {player1.Min(w => w.Hits.ToString("00"))} | Max: {player1.Max(w => w.Hits.ToString("00"))}");
+			Console.WriteLine($"Misses - Avg: {player1.Average(w => w.Misses):00} | Min: {player1.Min(w => w.Misses.ToString("00"))} | Max: {player1.Max(w => w.Misses.ToString("00"))}");
 			Console.WriteLine($"Player 1 win rate: {player1.Count(s => s.Victory)}/{wins.Count}");
 			Console.WriteLine($"Player 2 win rate: {wins.Except(player1).Count()}/{wins.Count}");
 			Console.ResetColor();
