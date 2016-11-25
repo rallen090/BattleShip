@@ -7,6 +7,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Threading.Tasks;
 using BattleShipClient.Commanders;
 using BattleShipClient.Protocol;
+using BattleShipClient.Utilities;
 using Medallion.Shell;
 
 namespace BattleShipClient
@@ -35,30 +36,30 @@ namespace BattleShipClient
 			}
 		}
 
-		public async Task<List<GameResult>> RunWithServerAsync(int trials, int? portOverride = null, bool useTclServer = false, bool useTclClient = false)
+		public async Task<List<GameResult>> RunWithServerAsync(ThreadSafeResultList results, int trials, int? portOverride = null, bool useTclServer = false, bool useTclClient = false)
 		{
-			Console.WriteLine($"Running games with server and client - {trials} total games");
+			Log.DebugLine($"Running games with server and client - {trials} total games");
 			List<GameResult> allTrialResults = new List<GameResult>();
 			for (var i = 0; i < trials; i++)
 			{
-				Console.WriteLine($"Running game {i}...");
-				var result = await RunOnceWithServer(useTclServer, useTclClient, portOverride);
+				Log.DebugLine($"Running game {i}...");
+				var result = await RunOnceWithServer(results, useTclServer, useTclClient, portOverride);
 				allTrialResults.AddRange(result);
 			}
 			return allTrialResults;
 		}
 
-		public async Task<List<GameResult>> RunWithManyServersAsync(int trials, int servers, bool useTclServer, bool useTclClient)
+		public async Task<List<GameResult>> RunWithManyServersAsync(ThreadSafeResultList results, int trials, int servers, bool useTclServer, bool useTclClient)
 		{
 			const int portBase = 9900;
 			var runningServers = Enumerable.Range(0, servers)
-				.Select(i => this.RunWithServerAsync(trials, portOverride: portBase + i, useTclServer: useTclServer, useTclClient: useTclClient))
+				.Select(i => this.RunWithServerAsync(results, trials, portOverride: portBase + i, useTclServer: useTclServer, useTclClient: useTclClient))
 				.ToArray();
 			await Task.WhenAll(runningServers);
 			return runningServers.SelectMany(s => s.Result).ToList();
 		}
 
-		private async Task<List<GameResult>> RunOnceWithServer(bool useTclServer, bool useTclClient, int? portOverride = null)
+		private async Task<List<GameResult>> RunOnceWithServer(ThreadSafeResultList results, bool useTclServer, bool useTclClient, int? portOverride = null)
 		{
 			Command tclServer = null;
 			Command tclClient = null;
@@ -144,8 +145,11 @@ namespace BattleShipClient
 				var p2Result = clientTask2.Result;
 				p1Result.PlayerId = 1;
 				p2Result.PlayerId = 2;
+				p2Result.Victory = !p1Result.Victory;
 
-				return new List<GameResult> {p1Result, tclClient == null ? p2Result : new GameResult {Victory = !clientTask1.Result.Victory, PlayerId = 2} };
+				results.Add(Tuple.Create(p1Result, p2Result));
+
+				return new List<GameResult> {p1Result, p2Result };
 			}
 			finally
 			{
