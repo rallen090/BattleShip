@@ -188,5 +188,6 @@ namespace BattleShipClient
 		public int Shots { get; set; }
 		public int Hits { get; set; }
 		public int Misses { get; set; }
+		public int PlayerId { get; set; }
 	}
 }

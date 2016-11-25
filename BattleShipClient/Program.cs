@@ -42,11 +42,11 @@ namespace BattleShipClient
 				.ArgumentWithFlag("n",
 					flag: "n",
 					parser: int.Parse,
-					defaultValue: 2)
+					defaultValue: 1)
 				.ArgumentWithFlag("servers",
 					flag: "servers",
 					parser: int.Parse,
-					defaultValue: 2)
+					defaultValue: 4)
 				.ArgumentWithFlag("tclServer",
 					flag: "tclServer",
 					parser: bool.Parse,
@@ -88,15 +88,24 @@ namespace BattleShipClient
 		private static void PrintResults(List<GameResult> results)
 		{
 			var wins = results.Where(r => r.Victory).ToList();
-			var player1 = results.Select(((result, i) => new {result, i})).Where(s => s.i % 2 == 0).Select(s => s.result).ToList();
+			var groupedResults = results.GroupBy(r => r.PlayerId).ToDictionary(s => s.Key, s => s);
+			var player1 = groupedResults[1];
 			Console.ForegroundColor = ConsoleColor.Cyan;
 			Console.WriteLine($"{wins.Count} games complete!");
 			Console.WriteLine($"Shots  - Avg: {player1.Average(w => w.Shots):00} | Min: {player1.Min(w => w.Shots.ToString("00"))} | Max: {player1.Max(w => w.Shots.ToString("00"))}");
 			Console.WriteLine($"Hits   - Avg: {player1.Average(w => w.Hits):00} | Min: {player1.Min(w => w.Hits.ToString("00"))} | Max: {player1.Max(w => w.Hits.ToString("00"))}");
 			Console.WriteLine($"Misses - Avg: {player1.Average(w => w.Misses):00} | Min: {player1.Min(w => w.Misses.ToString("00"))} | Max: {player1.Max(w => w.Misses.ToString("00"))}");
-			Console.WriteLine($"Player 1 win rate: {player1.Count(s => s.Victory)}/{wins.Count}");
-			Console.WriteLine($"Player 2 win rate: {wins.Except(player1).Count()}/{wins.Count}");
+			Console.WriteLine($"Player 1 win rate: {groupedResults[1].Count(s => s.Victory)}/{wins.Count}");
+			Console.WriteLine($"Player 2 win rate: {groupedResults[2].Count(s => s.Victory)}/{wins.Count}");
 			Console.ResetColor();
+		}
+
+		private static void PrintPlayerResults(IGrouping<int, GameResult> resultsForPlayer)
+		{
+			Console.WriteLine();
+			Console.WriteLine($"Shots  - Avg: {resultsForPlayer.Average(w => w.Shots):00} | Min: {resultsForPlayer.Min(w => w.Shots.ToString("00"))} | Max: {resultsForPlayer.Max(w => w.Shots.ToString("00"))}");
+			Console.WriteLine($"Hits   - Avg: {resultsForPlayer.Average(w => w.Hits):00} | Min: {resultsForPlayer.Min(w => w.Hits.ToString("00"))} | Max: {resultsForPlayer.Max(w => w.Hits.ToString("00"))}");
+			Console.WriteLine($"Misses - Avg: {resultsForPlayer.Average(w => w.Misses):00} | Min: {resultsForPlayer.Min(w => w.Misses.ToString("00"))} | Max: {resultsForPlayer.Max(w => w.Misses.ToString("00"))}");
 		}
 	}
 }

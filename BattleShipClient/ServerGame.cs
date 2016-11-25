@@ -28,6 +28,12 @@ namespace BattleShipClient
 			this.Initialize();
 		}
 
+		public string ToMapString()
+		{
+			return string.Join(" ", this._grid.Cast<Cell>()
+				.Select(s => s.State != CellState.Hit ? (s.State == CellState.Hidden ? 0 : -99) : s.ShipId));
+		}
+
 		private void Initialize()
 		{
 			var count = 0;
