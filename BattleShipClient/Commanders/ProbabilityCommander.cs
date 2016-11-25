@@ -58,9 +58,9 @@ namespace BattleShipClient.Commanders
 					{
 						Console.ForegroundColor = ConsoleColor.White;
 					}
-					Console.Write($"({probabilityGrid[y, x].ProbabilityRating.ToString("00")}) ");
+					Log.Debug($"({probabilityGrid[y, x].ProbabilityRating.ToString("00")}) ");
 				}
-				Console.WriteLine();
+				Log.DebugLine("\n");
 			}
 			Console.ResetColor();
 
