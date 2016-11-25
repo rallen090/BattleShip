@@ -52,7 +52,8 @@ namespace BattleShipClient
 
 						while (!this._cancellationSource.Token.IsCancellationRequested)
 						{
-							await w1.WriteLineAsync(game2.Won() ? "LOSE" : "SHOOT");
+							var m1 = game2.Won() ? "LOSE" : $"SHOOT {game1.ToMapString()} {game2.ToMapString()}";
+							await w1.WriteLineAsync(m1);
 							await w1.FlushAsync();
 								
 							string l1;
@@ -64,7 +65,8 @@ namespace BattleShipClient
 							await w1.WriteLineAsync(responseString1);
 							await w1.FlushAsync();
 
-							await w2.WriteLineAsync(game1.Won() ? "LOSE" : "SHOOT");
+							var m2 = game1.Won() ? "LOSE" : $"SHOOT {game2.ToMapString()} {game1.ToMapString()}";
+							await w2.WriteLineAsync(m2);
 							await w2.FlushAsync();
 
 							string l2;

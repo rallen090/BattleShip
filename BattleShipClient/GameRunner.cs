@@ -52,7 +52,7 @@ namespace BattleShipClient
 		{
 			const int portBase = 9900;
 			var runningServers = Enumerable.Range(0, servers)
-				.Select(i => Task.Run(() => this.RunWithServerAsync(trials, portOverride: portBase + i, useTclServer: useTclServer, useTclClient: useTclClient)))
+				.Select(i => this.RunWithServerAsync(trials, portOverride: portBase + i, useTclServer: useTclServer, useTclClient: useTclClient))
 				.ToArray();
 			await Task.WhenAll(runningServers);
 			return runningServers.SelectMany(s => s.Result).ToList();
@@ -104,13 +104,13 @@ namespace BattleShipClient
 
 				var clientTask1 = this.RunOnlyClientAsync(portOverride);
 
-				Task<GameResult> clientTask2 = Task.FromResult(new GameResult());
+				Task<GameResult> clientTask2 = Task.FromResult(new GameResult { PlayerId = 2});
 				
 				if (useTclClient)
 				{
 					var tclPath = Path.Combine(Directory.GetCurrentDirectory(), "tclkit852.exe");
 					var tclClientPath = Path.Combine(Directory.GetCurrentDirectory(), "bs_client.tcl");
-					var serverArguments = new List<string> { File.Exists(tclClientPath) ? tclClientPath : @"C:\dev\BattleShip\bs_client.tcl" };
+					var serverArguments = new List<string> { File.Exists(tclClientPath) ? tclClientPath : @"C:\dev\BattleShip\bs_client123.tcl" };
 					if (portOverride != null)
 					{
 						serverArguments.Add(portOverride.ToString());
@@ -139,7 +139,13 @@ namespace BattleShipClient
 
 				tclClient?.Kill();
 				tcpServer?.Dispose();
-				return new List<GameResult> {clientTask1.Result, tclClient == null ? clientTask2?.Result : new GameResult {Victory = !clientTask1.Result.Victory} };
+
+				var p1Result = clientTask1.Result;
+				var p2Result = clientTask2.Result;
+				p1Result.PlayerId = 1;
+				p2Result.PlayerId = 2;
+
+				return new List<GameResult> {p1Result, tclClient == null ? p2Result : new GameResult {Victory = !clientTask1.Result.Victory, PlayerId = 2} };
 			}
 			finally
 			{
