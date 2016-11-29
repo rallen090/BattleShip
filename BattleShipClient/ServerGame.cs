@@ -63,6 +63,7 @@ namespace BattleShipClient
 			Cell hitCell;
 			if ((hitCell = this._shipCells.SingleOrDefault(c => c.TargetLocation == targetLocation)) != null)
 			{
+				hitCell.State = hitCell.ShipId == null ? CellState.Miss : CellState.Hit;
 				var shipId = hitCell.ShipId.Value;
 				var hitSpots = this._shipHitsById[shipId];
 				hitSpots.Add(targetLocation);

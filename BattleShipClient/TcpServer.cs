@@ -45,9 +45,9 @@ namespace BattleShipClient
 					var game2 = new ServerGame(10);
 					var t1 = Task.Run(async () =>
 					{
-						await w1.WriteLineAsync("OK " + string.Join(" ", Enumerable.Range(0, 200)));
+						await w1.WriteLineAsync("OK " + string.Join(" ", Enumerable.Repeat(0, 200)));
 						await w1.FlushAsync();
-						await w2.WriteLineAsync("OK " + string.Join(" ", Enumerable.Range(0, 200)));
+						await w2.WriteLineAsync("OK " + string.Join(" ", Enumerable.Repeat(0, 200)));
 						await w2.FlushAsync();
 
 						while (!this._cancellationSource.Token.IsCancellationRequested)
@@ -60,7 +60,7 @@ namespace BattleShipClient
 							while(string.IsNullOrWhiteSpace(l1 = await r1.ReadLineAsync().WithCancellation(this._cancellationSource.Token))) { }
 
 							var response1 = game1.Shoot(int.Parse(l1.Trim()));
-							var responseString1 = MessageEncoder.EncodeResponseMessage(response1);
+							var responseString1 = $"{MessageEncoder.EncodeResponseMessage(response1)} {game1.ToMapString()} {game2.ToMapString()}";
 
 							await w1.WriteLineAsync(responseString1);
 							await w1.FlushAsync();
@@ -73,7 +73,7 @@ namespace BattleShipClient
 							while (string.IsNullOrWhiteSpace(l2 = await r2.ReadLineAsync().WithCancellation(this._cancellationSource.Token))) { }
 
 							var response2 = game2.Shoot(int.Parse(l2.Trim()));
-							var responseString2 = MessageEncoder.EncodeResponseMessage(response2);
+							var responseString2 = $"{MessageEncoder.EncodeResponseMessage(response2)} {game2.ToMapString()} {game1.ToMapString()}";
 
 							await w2.WriteLineAsync(responseString2);
 							await w2.FlushAsync();
