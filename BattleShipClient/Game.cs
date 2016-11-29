@@ -96,6 +96,8 @@ namespace BattleShipClient
 					case ResponseMessageType.Shoot:
 						move = this._commander.GetNextTarget(this._grid, this._ships);
 						Log.DebugLine($"Shooting: {move}");
+						//Console.WriteLine("Press enter...");
+						//Console.ReadLine();
 						this.WriteNextMove(move);
 						this._shotCount++;
 						break;

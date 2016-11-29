@@ -17,11 +17,11 @@ namespace BattleShipClient.Protocol
 				switch (message.Type)
 				{
 					case ResponseMessageType.Hit:
-						return "HIT";
+						return $"HIT";
 					case ResponseMessageType.Sunk:
 						return $"SUNK {message.Value}";
 					case ResponseMessageType.Miss:
-						return "MISS";
+						return $"MISS";
 					case ResponseMessageType.Win:
 						return "WIN";
 					case ResponseMessageType.Lose:
