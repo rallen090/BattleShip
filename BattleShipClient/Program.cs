@@ -42,11 +42,11 @@ namespace BattleShipClient
 				.ArgumentWithFlag("n",
 					flag: "n",
 					parser: int.Parse,
-					defaultValue: 2)
+					defaultValue: 1)
 				.ArgumentWithFlag("servers",
 					flag: "servers",
 					parser: int.Parse,
-					defaultValue: 2)
+					defaultValue: 1)
 				.ArgumentWithFlag("tclServer",
 					flag: "tclServer",
 					parser: bool.Parse,
