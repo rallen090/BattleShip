@@ -23,13 +23,13 @@ namespace BattleShipClient.Utilities
 					break;
 
 				case CtrlTypes.CTRL_CLOSE_EVENT:
-					Console.WriteLine("Program being closed!");
+					Log.DebugLine("Program being closed!");
 					GameRunner.KillServers();
 					break;
 
 				case CtrlTypes.CTRL_LOGOFF_EVENT:
 				case CtrlTypes.CTRL_SHUTDOWN_EVENT:
-					Console.WriteLine("User is logging off!");
+					Log.DebugLine("User is logging off!");
 					GameRunner.KillServers();
 					break;
 			}

@@ -7,6 +7,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Threading.Tasks;
 using BattleShipClient.Commanders;
 using BattleShipClient.Protocol;
+using BattleShipClient.Utilities;
 using Medallion.Shell;
 
 namespace BattleShipClient
@@ -35,30 +36,30 @@ namespace BattleShipClient
 			}
 		}
 
-		public async Task<List<GameResult>> RunWithServerAsync(int trials, int? portOverride = null, bool useTclServer = false, bool useTclClient = false)
+		public async Task<List<GameResult>> RunWithServerAsync(ThreadSafeResultList results, int trials, int? portOverride = null, bool useTclServer = false, bool useTclClient = false)
 		{
-			Console.WriteLine($"Running games with server and client - {trials} total games");
+			Log.DebugLine($"Running games with server and client - {trials} total games");
 			List<GameResult> allTrialResults = new List<GameResult>();
 			for (var i = 0; i < trials; i++)
 			{
-				Console.WriteLine($"Running game {i}...");
-				var result = await RunOnceWithServer(useTclServer, useTclClient, portOverride);
+				Log.DebugLine($"Running game {i}...");
+				var result = await RunOnceWithServer(results, useTclServer, useTclClient, portOverride);
 				allTrialResults.AddRange(result);
 			}
 			return allTrialResults;
 		}
 
-		public async Task<List<GameResult>> RunWithManyServersAsync(int trials, int servers, bool useTclServer, bool useTclClient)
+		public async Task<List<GameResult>> RunWithManyServersAsync(ThreadSafeResultList results, int trials, int servers, bool useTclServer, bool useTclClient)
 		{
 			const int portBase = 9900;
 			var runningServers = Enumerable.Range(0, servers)
-				.Select(i => Task.Run(() => this.RunWithServerAsync(trials, portOverride: portBase + i, useTclServer: useTclServer, useTclClient: useTclClient)))
+				.Select(i => this.RunWithServerAsync(results, trials, portOverride: portBase + i, useTclServer: useTclServer, useTclClient: useTclClient))
 				.ToArray();
 			await Task.WhenAll(runningServers);
 			return runningServers.SelectMany(s => s.Result).ToList();
 		}
 
-		private async Task<List<GameResult>> RunOnceWithServer(bool useTclServer, bool useTclClient, int? portOverride = null)
+		private async Task<List<GameResult>> RunOnceWithServer(ThreadSafeResultList results, bool useTclServer, bool useTclClient, int? portOverride = null)
 		{
 			Command tclServer = null;
 			Command tclClient = null;
@@ -104,13 +105,13 @@ namespace BattleShipClient
 
 				var clientTask1 = this.RunOnlyClientAsync(portOverride);
 
-				Task<GameResult> clientTask2 = Task.FromResult(new GameResult());
+				Task<GameResult> clientTask2 = Task.FromResult(new GameResult { PlayerId = 2});
 				
 				if (useTclClient)
 				{
 					var tclPath = Path.Combine(Directory.GetCurrentDirectory(), "tclkit852.exe");
 					var tclClientPath = Path.Combine(Directory.GetCurrentDirectory(), "bs_client.tcl");
-					var serverArguments = new List<string> { File.Exists(tclClientPath) ? tclClientPath : @"C:\dev\BattleShip\bs_client.tcl" };
+					var serverArguments = new List<string> { File.Exists(tclClientPath) ? tclClientPath : @"C:\dev\BattleShip\bs_client123.tcl" };
 					if (portOverride != null)
 					{
 						serverArguments.Add(portOverride.ToString());
@@ -139,7 +140,16 @@ namespace BattleShipClient
 
 				tclClient?.Kill();
 				tcpServer?.Dispose();
-				return new List<GameResult> {clientTask1.Result, tclClient == null ? clientTask2?.Result : new GameResult {Victory = !clientTask1.Result.Victory} };
+
+				var p1Result = clientTask1.Result;
+				var p2Result = clientTask2.Result;
+				p1Result.PlayerId = 1;
+				p2Result.PlayerId = 2;
+				p2Result.Victory = !p1Result.Victory;
+
+				results.Add(Tuple.Create(p1Result, p2Result));
+
+				return new List<GameResult> {p1Result, p2Result };
 			}
 			finally
 			{

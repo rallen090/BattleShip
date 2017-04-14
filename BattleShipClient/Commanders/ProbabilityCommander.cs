@@ -8,7 +8,7 @@ namespace BattleShipClient.Commanders
 	public class ProbabilityCommander : ICommander
 	{
 		private readonly List<SunkenShipInfo> _sunkenShips = new List<SunkenShipInfo>();
-		private const int HitProbabilityRating = 20;
+		private const int HitProbabilityRating = 4;
 		private const int NormalProbabilityRating = 1;
 
 		public int GetNextTarget(Cell[,] grid, List<Ship> ships)
@@ -58,9 +58,9 @@ namespace BattleShipClient.Commanders
 					{
 						Console.ForegroundColor = ConsoleColor.White;
 					}
-					Console.Write($"({probabilityGrid[y, x].ProbabilityRating.ToString("00")}) ");
+					Log.Debug($"({probabilityGrid[y, x].ProbabilityRating.ToString("00")}) ");
 				}
-				Console.WriteLine();
+				Log.DebugLine("\n");
 			}
 			Console.ResetColor();
 
@@ -72,27 +72,27 @@ namespace BattleShipClient.Commanders
 			var topMoves = orderedMoves.TakeWhile(o => o.ProbabilityRating == firstMove.ProbabilityRating).ToList();
 
 			// decide between equal probabilities
-			if (topMoves.Count > 1)
-			{
-				var sunkenCells = this.GetAllSunkenCells();
+			//if (topMoves.Count > 1)
+			//{
+			//	var sunkenCells = this.GetAllSunkenCells();
 
-				var hitCells = grid.Cast<Cell>().Where(s => s.State == CellState.Hit).Except(sunkenCells).ToList();
+			//	var hitCells = grid.Cast<Cell>().Where(s => s.State == CellState.Hit).Except(sunkenCells).ToList();
 
-				var viableHitCells = hitCells.Where(c => this.GetAdjacentCells(grid, c).Count(s => s.State == CellState.Hidden) == 1);
-				var bothMatch = viableHitCells.Intersect(topMoves.Select(s => s.Cell)).ToList();
-				if (bothMatch.Any())
-				{
-					return bothMatch.First().TargetLocation;
-				}
+			//	var viableHitCells = hitCells.Where(c => this.GetAdjacentCells(grid, c).Count(s => s.State == CellState.Hidden) == 1);
+			//	var bothMatch = viableHitCells.Intersect(topMoves.Select(s => s.Cell)).ToList();
+			//	if (bothMatch.Any())
+			//	{
+			//		return bothMatch.First().TargetLocation;
+			//	}
 
-				return topMoves.Select(s =>
-				{
-					var adjecentCells = this.GetAdjacentCells(grid, s.Cell);
-					return new { adjacentHits = adjecentCells.Where(c => c.State == CellState.Hit).Except(sunkenCells).Count(), cell = s};
-				})
-				.OrderByDescending(s => s.adjacentHits)
-				.First().cell.Cell.TargetLocation;
-			}
+			//	return topMoves.Select(s =>
+			//	{
+			//		var adjecentCells = this.GetAdjacentCells(grid, s.Cell);
+			//		return new { adjacentHits = adjecentCells.Where(c => c.State == CellState.Hit).Except(sunkenCells).Count(), cell = s};
+			//	})
+			//	.OrderByDescending(s => s.adjacentHits)
+			//	.First().cell.Cell.TargetLocation;
+			//}
 
 			return orderedMoves.First().Cell.TargetLocation;
 		}

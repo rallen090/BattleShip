@@ -1,8 +1,27 @@
+# Battleship 11-2016
+
+if 0 { comment
+radar(0..99) = -99 miss, 1-5 hit on boat n
+map(0..99) = -99 miss, 1-5 boat n at position, -(1-5) hit on boat n
+
+1.	When you connect it randomly places your boats and responds
+    a.	OK map(0..99)
+2.  When it’s your turn it sends
+    a.	SHOOT map(0..99), like
+3.	You shoot with a single number 0-99, like
+    a.	24
+4.	In response it sends one of
+    a.	WIN map(0..99), or
+    b.	LOSE map(0..99), or
+    c.	MISS map(0..99), or
+    d.	SUNK N map(0..99), or       // notice the extra parm N=1..5
+    e.	HIT map(0..99)
+}
+
 catch {console show}
 console eval "wm minsize . 90 30"
 console title "Battleship Server"
 wm withdraw .
-console hide
 
 puts "Starting..."
 # server
@@ -10,6 +29,7 @@ puts "Starting..."
 set ::clients 0
 set ::player1done 0
 set ::player2done 0
+set ::datapath [file dirname [info script]]     ;# location of .tcl
 
 proc Server {startTime channel clientaddr clientport} {
     global player1
@@ -23,7 +43,8 @@ proc Server {startTime channel clientaddr clientport} {
     } elseif {$::clients == 2} {
         puts $channel "Client $::clients"
         initplayer player2 player1 $channel
-        after 1000 play
+        after 500 play
+        after 1000 "close $::S"
     }
     flush $channel
 }
@@ -62,6 +83,7 @@ proc display {p} {
         puts ""
     }
     puts "\nshots $player(shots), hits $player(hits), misses $player(misses)"
+    puts "game:$::game - min=$::min, avg=[expr {$::shots/$::game}], max=$::max"
     update
 }
 
@@ -71,21 +93,59 @@ proc initplayer {p1 p2 chan} {
 
     puts "$p1 starting"
 # place player boats
-    for {set i 1} {$i < 6} {incr i} { placeboat $p1 $i }    ;# place boats random
+    if {$p1 == "player1"} {
+        for {set i 1} {$i < 6} {incr i} { placeboat $p1 $i }    ;# place boats random
+        fileevent $chan readable [list gets $chan ::line1]
+    } else {
+        for {set i 0} {$i < 100} {incr i} {            
+            set ::player2(map,$i) $::player1(map,$i)            ;# copy for player2
+        }
+        fileevent $chan readable [list gets $chan ::line2]
+    }
+
     state $p1 "OK " $chan
-    
     set us(chan) $chan          ;# save channel for later
 }
 
 proc play {} {
+    global player2 player2
+
+    set ::shots 0
+    set ::min 100
+    set ::max 0
+    set ::ngames 10
+    set ::game 0
+    
+    while {$::game < $::ngames} {
+        incr ::game
+        playone
+        set x $player2(shots)
+        incr ::shots $x
+        if {$x < $::min} { set ::min $x }
+        if {$x > $::max} { set ::max $x }
+        
+        init player1; init player2
+        for {set i 1} {$i < 6} {incr i} { 
+            placeboat player1 $i
+        }
+        for {set i 0} {$i < 100} {incr i} {
+            set ::player2(map,$i) $::player1(map,$i)        ;# copy for player2
+        }
+        
+        puts "min=$::min, avg=[expr {$::shots/$::game}], max=$::max"
+    }
+    puts "Done $::game games"
+}
+
+proc playone {} {
     global player1
     global player2
     
     set ::gameover 0
     while {$::gameover == 0} {
-        move player1 player2        ;# player1 move
-        if {$::gameover} { return }
-        move player2 player1        ;# player2 move
+        if {$::game & 1} { move player1 player2 } else { move player2 player1 }     ;# player1 move 
+        if {$::gameover} { break }
+        if {$::game & 1} { move player2 player1 } else { move player1 player2 }     ;# player2 move
     }
 }
 
@@ -97,8 +157,15 @@ proc move {p1 p2} {
     puts "$p1 move"
     state $p1 "SHOOT " $us(chan)        ;# send request
 
-    gets $us(chan) line                 ;# get player shot 0-99
-    
+#    gets $us(chan) line                 ;# get player shot 0-99
+    if {$p1 == "player1"} {
+        vwait ::line1
+        set line $::line1
+    } else {
+        vwait ::line2
+        set line $::line2
+    }
+
     set boatpos [lindex $line 0]        ;# just 0-99
     if {$boatpos < 0} {
         puts $us(chan) "ERROR - $line"
@@ -226,14 +293,10 @@ global player1; init player1; set player1(me) 1
 global player2; init player2; set player2(me) 2
 
 # ok go
-set portToUse 0
+set port 9900                                   ;# default port
+if {$argc} { set port [lindex $argv 0] }
 
-if { $argc >= 1 } {
-	set portToUse [lindex $argv 0]
-} else {
-	set portToUse 9900
-}
-socket -server [list Server [clock seconds]] $portToUse
+set ::S [socket -server [list Server [clock seconds]] $port]
 vwait forever
 
 # testing
