@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BattleShipClient.Commanders;
 using BattleShipClient.Protocol;
+using BattleShipClient.Utilities;
 
 namespace BattleShipClient
 {
@@ -29,7 +30,7 @@ namespace BattleShipClient
 
 		public async Task<GameResult> PlayAsync()
 		{
-			Console.WriteLine("Starting new game...");
+			Log.DebugLine("Starting new game...");
 
 			// connect
 			await this._connection.ConnectAsync();
@@ -54,7 +55,7 @@ namespace BattleShipClient
 		private async Task InitializeAsync()
 		{
 			// wait for OK and then instantiate grid
-			Console.WriteLine("Waiting for OK message to begin...");
+			Log.DebugLine("Waiting for OK message to begin...");
 			ResponseMessage message;
 			while ((message = await this.GetNextResponse()).Type != ResponseMessageType.Ok) { }
 
@@ -80,7 +81,7 @@ namespace BattleShipClient
 			// initialize ships
 			this._ships = ServerGame.InitializeShips();
 
-			Console.WriteLine($"Game initialized: {n}x{n} grid");
+			Log.DebugLine($"Game initialized: {n}x{n} grid");
 		}
 
 		private async Task PlayToEndAsync()
@@ -88,29 +89,31 @@ namespace BattleShipClient
 			int move = -1;
 			while (true)
 			{
-				//Console.WriteLine("Waiting for response...");
+				//Log.DebugLine("Waiting for response...");
 				var message = await this.GetNextResponse();
 				switch (message.Type)
 				{
 					case ResponseMessageType.Shoot:
 						move = this._commander.GetNextTarget(this._grid, this._ships);
-						Console.WriteLine($"Shooting: {move}");
+						Log.DebugLine($"Shooting: {move}");
+						//Console.WriteLine("Press enter...");
+						//Console.ReadLine();
 						this.WriteNextMove(move);
 						this._shotCount++;
 						break;
 					case ResponseMessageType.Hit:
-						Console.WriteLine("HIT");
+						Log.DebugLine("HIT");
 						this._grid.Cast<Cell>().Single(c => c.TargetLocation == move).State = CellState.Hit;
 						this._hitCount++;
 						break;
 					case ResponseMessageType.Miss:
-						Console.WriteLine("MISS");
+						Log.DebugLine("MISS");
 						this._grid.Cast<Cell>().Single(c => c.TargetLocation == move).State = CellState.Miss;
 						this._missCount++;
 						break;
 					case ResponseMessageType.Sunk:
 						var shipId = message.Value.Value;
-						Console.WriteLine($"HIT - {this._ships.Single(s => s.Id == shipId).Name} has sunk");
+						Log.DebugLine($"HIT - {this._ships.Single(s => s.Id == shipId).Name} has sunk");
 						this._grid.Cast<Cell>().Single(c => c.TargetLocation == move).State = CellState.Hit;
 						this._ships.Single(s => s.Id == shipId).Sunk = true;
 						this._hitCount++;
@@ -118,19 +121,19 @@ namespace BattleShipClient
 					case ResponseMessageType.Win:
 						this._victory = true;
 						Console.ForegroundColor = ConsoleColor.Green;
-						Console.WriteLine("Victory!");
+						Log.DebugLine("Victory!");
 						Console.ResetColor();
 						return;
 					case ResponseMessageType.Lose:
 						Console.ForegroundColor = ConsoleColor.DarkRed;
-						Console.WriteLine("Defeat!");
+						Log.DebugLine("Defeat!");
 						Console.ResetColor();
 						return;
 					case ResponseMessageType.Error:
-						Console.WriteLine($"TcpServer encountered an error: '{message.FullMessage}'");
+						Log.DebugLine($"TcpServer encountered an error: '{message.FullMessage}'");
 						return;
 					case ResponseMessageType.Unknown:
-						Console.WriteLine($"Ignoring unknown command: '{message.FullMessage}'");
+						Log.DebugLine($"Ignoring unknown command: '{message.FullMessage}'");
 						return;
 					default:
 						throw new Exception($"Unexpected response message: {message.Type.ToString()}");
@@ -150,8 +153,8 @@ namespace BattleShipClient
 
 		private void PrintResults()
 		{
-			Console.WriteLine($"Shots: {this._shotCount} Hits: {this._hitCount} Misses: {this._missCount}");
-			Console.WriteLine("Game complete");
+			Log.DebugLine($"Shots: {this._shotCount} Hits: {this._hitCount} Misses: {this._missCount}");
+			Log.DebugLine("Game complete");
 		}
 	}
 
@@ -188,5 +191,6 @@ namespace BattleShipClient
 		public int Shots { get; set; }
 		public int Hits { get; set; }
 		public int Misses { get; set; }
+		public int PlayerId { get; set; }
 	}
 }

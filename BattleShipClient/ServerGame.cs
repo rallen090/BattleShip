@@ -28,6 +28,12 @@ namespace BattleShipClient
 			this.Initialize();
 		}
 
+		public string ToMapString()
+		{
+			return string.Join(" ", this._grid.Cast<Cell>()
+				.Select(s => s.State != CellState.Hit ? (s.State == CellState.Hidden ? 0 : -99) : s.ShipId));
+		}
+
 		private void Initialize()
 		{
 			var count = 0;
@@ -57,6 +63,7 @@ namespace BattleShipClient
 			Cell hitCell;
 			if ((hitCell = this._shipCells.SingleOrDefault(c => c.TargetLocation == targetLocation)) != null)
 			{
+				hitCell.State = hitCell.ShipId == null ? CellState.Miss : CellState.Hit;
 				var shipId = hitCell.ShipId.Value;
 				var hitSpots = this._shipHitsById[shipId];
 				hitSpots.Add(targetLocation);

@@ -62,8 +62,10 @@
     <Compile Include="TcpServer.cs" />
     <Compile Include="Utilities\CommandLineArgument.cs" />
     <Compile Include="Utilities\EnumHelpers.cs" />
+    <Compile Include="Utilities\Log.cs" />
     <Compile Include="Utilities\ShutdownHelper.cs" />
     <Compile Include="Utilities\TaskHelpers.cs" />
+    <Compile Include="Utilities\ThreadSafeResultList.cs" />
     <Compile Include="Utilities\Throw.cs" />
   </ItemGroup>
   <ItemGroup>

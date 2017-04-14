@@ -35,7 +35,7 @@ namespace BattleShipClient.Protocol
 		{
 			if (this._tcpClient == null)
 			{
-				Console.WriteLine($"Connecting to TCP server at '{this._ipAddress}:{this._port}'...");
+				Log.DebugLine($"Connecting to TCP server at '{this._ipAddress}:{this._port}'...");
 				this._tcpClient = new TcpClient();
 
 				try
@@ -45,14 +45,14 @@ namespace BattleShipClient.Protocol
 				catch (Exception ex)
 				{
 					Console.ForegroundColor = ConsoleColor.Red;
-					Console.WriteLine($"Failed to connect to a TCP server at '{this._ipAddress}:{this._port}'. Ensure that there is an active server hosted there. \nFull error details: \n{ex}");
+					Log.DebugLine($"Failed to connect to a TCP server at '{this._ipAddress}:{this._port}'. Ensure that there is an active server hosted there. \nFull error details: \n{ex}");
 					Console.ForegroundColor = ConsoleColor.White;
-					Console.WriteLine("Press enter to exit...");
+					Log.DebugLine("Press enter to exit...");
 					// wait for enter before exiting
 					Console.ReadLine();
 					Environment.Exit(1);
 				}
-				Console.WriteLine($"Connected to '{this._ipAddress}:{this._port}'");
+				Log.DebugLine($"Connected to '{this._ipAddress}:{this._port}'");
 
 				// kick off async reader/writer
 				this._asyncProcessor = this.ReadWriteAsync(this._tcpClient, this._cancellationSource.Token);
@@ -112,14 +112,14 @@ namespace BattleShipClient.Protocol
 			catch (TaskCanceledException) { }
 			catch (Exception ex)
 			{
-				Console.WriteLine("Error reading/writing: " + ex);
+				Log.DebugLine("Error reading/writing: " + ex);
 			}
-			Console.WriteLine("Connection stream closed");
+			Log.DebugLine("Connection stream closed");
 		}
 
 		private async Task ReadAsync(StreamReader reader, CancellationToken token)
 		{
-			Console.WriteLine("Reading stream asynchronously...");
+			Log.DebugLine("Reading stream asynchronously...");
 
 			while (!token.IsCancellationRequested)
 			{
@@ -140,7 +140,7 @@ namespace BattleShipClient.Protocol
 
 		private async Task WriteAsync(StreamWriter writer, CancellationToken token)
 		{
-			Console.WriteLine("Writing stream asynchronously...");
+			Log.DebugLine("Writing stream asynchronously...");
 
 			while (!token.IsCancellationRequested)
 			{
@@ -169,12 +169,12 @@ namespace BattleShipClient.Protocol
 		public void Dispose()
 		{
 			// disconnect if we have a connection
-			Console.WriteLine("Shutting down...");
+			Log.DebugLine("Shutting down...");
 			this._cancellationSource.Cancel();
 			this._asyncProcessor.Wait(TimeSpan.FromSeconds(10));
 			this._tcpClient.Close();
 			this._cancellationSource.Dispose();
-			Console.WriteLine("Successfully shut down");
+			Log.DebugLine("Successfully shut down");
 		}
 
 		private void ThrowIfNotConnected()
